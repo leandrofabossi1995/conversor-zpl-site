@@ -8,7 +8,7 @@ import PyPDF2
 # Configuração tem que ser a primeira coisa sempre
 st.set_page_config(page_title="Conversor ZPL para PDF Ultra", page_icon="🖨️", layout="centered")
 
-# --- MÁGICA DO VISUAL (CSS CSS) ---
+# --- MÁGICA DO VISUAL (CSS) ---
 st.markdown("""
     <style>
     /* Esconde o menu do topo e o rodapé do Streamlit */
@@ -161,7 +161,4 @@ with col2:
     st.write("- [Impressora Elgin L42 Pro](LINK_AFILIADO)")
     st.write("- [Leitor de Código de Barras](LINK_AFILIADO)")
 
-st.caption(") 
-
-
-
+st.caption("🔒 Site 100% Seguro: Seus arquivos são processados na memória e não ficam salvos em nenhum servidor.")
