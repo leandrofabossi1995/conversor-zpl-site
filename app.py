@@ -1,12 +1,11 @@
 import streamlit as st
 import requests
-import time
 import zipfile
 import io
 import PyPDF2
 
 # 1. Configuração inicial da página (Dark Mode)
-st.set_page_config(page_title="ZPL CONVERSOR MAX - DARK EDITION", page_icon="🖨️", layout="centered")
+st.set_page_config(page_title="ZPL CONVERSOR MAX", page_icon="🖨️", layout="centered")
 
 # 2. Inicialização da memória do sistema (Session State)
 if 'processado' not in st.session_state:
@@ -29,148 +28,109 @@ st.markdown(f"""
     /* Esconde menus e rodapés nativos */
     #MainMenu, footer, header {{visibility: hidden;}}
     
-    /* Fundo Dark e Fonte Profissional */
+    /* Fundo Dark */
     body, .stApp {{
-        background-color: #1e1e1e;
+        background-color: #121212;
         color: #e0e0e0;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }}
 
-    /* Título Discreto e Elegante */
+    /* Título Neon */
     .titulo-max {{
         text-align: center;
-        font-size: 28px;
-        font-weight: 300;
-        color: #00bcd4; /* Azul Neon */
-        letter-spacing: 3px;
-        margin-bottom: 30px;
-        text-transform: uppercase;
+        font-size: 32px;
+        font-weight: 700;
+        color: #00e5ff;
+        letter-spacing: 2px;
+        margin-bottom: 10px;
     }}
 
-    /* Estilo da área de Upload (Card Flutuante Compacto) */
-    section[data-testid="stFileUploadDropzone"] {{
-        background-color: #2d2d2d;
-        padding: 15px;
-        border-radius: 12px;
-        border: 1px solid #444;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        transition: 0.3s;
+    /* Estilo das Colunas de Instrução */
+    .instrucao-card {{
+        text-align: center;
+        padding: 10px;
+        border-radius: 10px;
+        background: #1e1e1e;
+        border: 1px solid #333;
     }}
-    section[data-testid="stFileUploadDropzone"]:hover {{
-        border-color: #00bcd4;
-        box-shadow: 0 6px 10px rgba(0, 188, 212, 0.2);
+    .instrucao-icon {{
+        font-size: 24px;
+        margin-bottom: 5px;
+    }}
+    .instrucao-texto {{
+        font-size: 14px;
+        color: #bbb;
+    }}
+
+    /* Customização do Uploader para Português */
+    section[data-testid="stFileUploadDropzone"] {{
+        background-color: #1e1e1e;
+        border: 2px dashed #333;
+        border-radius: 15px;
+        padding: 20px;
     }}
     
-    /* Tradução visual e customização do botão Browse files */
+    /* Esconde o texto original em inglês e insere o novo */
     section[data-testid="stFileUploadDropzone"] button {{
         font-size: 0px !important;
-        background-color: transparent !important;
-        border: 2px solid #00bcd4 !important;
-        color: #00bcd4 !important;
-        border-radius: 30px !important;
-        padding: 10px 20px !important;
-        width: auto !important;
-        margin: 10px auto !important;
-        display: block !important;
     }}
     section[data-testid="stFileUploadDropzone"] button::after {{
-        content: "☁️ SELECIONAR ARQUIVOS";
+        content: "SELECIONAR ARQUIVOS";
         font-size: 16px;
         font-weight: bold;
+        color: #00e5ff;
     }}
-    section[data-testid="stFileUploadDropzone"] button:hover {{
-        background-color: #00bcd4 !important;
-        color: #1e1e1e !important;
-    }}
-
-    /* Estilo do Texto de Instrução (Compacto) */
-    section[data-testid="stFileUploadDropzone"] p {{
-        font-size: 14px;
-        color: #aaa;
-        text-align: center;
-        margin: 5px 0;
-    }}
-
-    /* Botão Converter (Azul Neon Brilhante) */
+    
+    /* Botão Converter (Azul Neon) */
     div.stButton > button:first-child {{
         background-color: transparent;
-        color: #00bcd4;
+        color: #00e5ff;
         width: 100%;
-        border-radius: 8px;
+        border-radius: 10px;
         height: 50px;
-        font-size: 18px;
+        border: 2px solid #00e5ff;
         font-weight: bold;
-        border: 2px solid #00bcd4;
         transition: 0.3s;
-        margin-top: 20px;
     }}
     div.stButton > button:first-child:hover {{
-        background-color: #00bcd4;
-        color: #1e1e1e;
-        box-shadow: 0 0 15px rgba(0, 188, 212, 0.5);
+        background-color: #00e5ff;
+        color: #121212;
+        box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
     }}
 
-    /* Botão Download (Verde Sucesso Brilhante) */
+    /* Botão Download (Verde) */
     div.stDownloadButton > button {{
-        background-color: transparent !important;
-        color: #28a745 !important;
-        width: 100%;
-        border-radius: 8px;
-        height: 55px;
-        font-size: 20px;
-        font-weight: bold;
-        border: 2px solid #28a745 !important;
-        transition: 0.3s;
-    }}
-    div.stDownloadButton > button:hover {{
         background-color: #28a745 !important;
         color: white !important;
-        box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
-    }}
-
-    /* Spinner e Mensagens de Erro/Sucesso */
-    .stSpinner {{
-        color: #00bcd4;
-    }}
-    .stAlert {{
-        background-color: #2d2d2d;
-        color: #e0e0e0;
-        border-radius: 8px;
-        border: 1px solid #444;
-    }}
-
-    /* Rodapé Discreto */
-    .rodape-links {{
-        text-align: center;
-        font-size: 14px;
-        color: #888;
-        margin-top: 50px;
-        padding-top: 20px;
-        border-top: 1px solid #444;
-    }}
-    .rodape-links a {{
-        color: #00bcd4;
-        text-decoration: none;
-        margin: 0 10px;
-    }}
-    .rodape-links a:hover {{
-        text-decoration: underline;
+        width: 100%;
+        border-radius: 10px;
+        height: 60px;
+        font-size: 20px;
+        font-weight: bold;
+        border: none;
     }}
     </style>
 """, unsafe_allow_html=True)
 
-# 4. Interface Principal
+# 4. Cabeçalho e Instruções
 st.markdown('<p class="titulo-max">ZPL CONVERSOR MAX</p>', unsafe_allow_html=True)
 
-# Só mostra o seletor se ainda não processamos nada
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.markdown('<div class="instrucao-card"><div class="instrucao-icon">📁</div><div class="instrucao-texto">1. Envie seus ZPL ou ZIP</div></div>', unsafe_allow_html=True)
+with col2:
+    st.markdown('<div class="instrucao-card"><div class="instrucao-icon">⚙️</div><div class="instrucao-texto">2. Clique em Converter</div></div>', unsafe_allow_html=True)
+with col3:
+    st.markdown('<div class="instrucao-card"><div class="instrucao-icon">✅</div><div class="instrucao-texto">3. Baixe o PDF Único</div></div>', unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# 5. Interface de Upload
 if not st.session_state.processado:
     arquivos = st.file_uploader("", accept_multiple_files=True, type=['zpl', 'txt', 'zip'], key=f"uploader_{st.session_state.reset_key}")
 
     if arquivos:
-        if st.button("🚀 CONVERTER PARA PDF ÚNICO"):
+        if st.button("🚀 INICIAR CONVERSÃO"):
             todas_as_etiquetas = []
-            
-            # Lógica de extração (ZPL/TXT/ZIP)
             for f in arquivos:
                 if f.name.lower().endswith('.zip'):
                     with zipfile.ZipFile(f, 'r') as z:
@@ -185,7 +145,7 @@ if not st.session_state.processado:
                     todas_as_etiquetas.extend([p + '^XZ' for p in partes if '^XA' in p])
 
             if todas_as_etiquetas:
-                with st.spinner("Processando etiquetas..."):
+                with st.spinner("Gerando PDF..."):
                     merger = PyPDF2.PdfMerger()
                     for zpl in todas_as_etiquetas:
                         res = requests.post('http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/', 
@@ -197,32 +157,23 @@ if not st.session_state.processado:
                     merger.write(pdf_out)
                     merger.close()
                     pdf_out.seek(0)
-                    
                     st.session_state.pdf_final = pdf_out.getvalue()
                     st.session_state.processado = True
                     st.rerun()
-            else:
-                st.error("Nenhuma etiqueta válida encontrada.")
 
-# 5. Tela de Download e Limpeza
+# 6. Finalização e Reset
 else:
-    st.success("✅ Conversor concluído com sucesso!")
+    st.success("Tudo pronto! Seu PDF foi gerado.")
     st.download_button(
-        label="⬇️ BAIXAR E FINALIZAR",
+        label="⬇️ BAIXAR PDF E LIMPAR TELA",
         data=st.session_state.pdf_final,
         file_name="etiquetas_concluidas.pdf",
         mime="application/pdf",
         on_click=resetar_sistema
     )
-    if st.button("Cancelar e Voltar"):
+    if st.button("Voltar"):
         resetar_sistema()
 
-# 6. Rodapé de Afiliados (Discreto)
-st.markdown(f"""
-    <div class="rodape-links">
-        📦 <b>Suprimentos Sugeridos:</b>
-        <a href="LINK_DA_AMAZON_IMPRESSORA" target="_blank">Impressora Térmica</a> |
-        <a href="LINK_DA_AMAZON_ETIQUETAS" target="_blank">Etiquetas 10x15</a>
-    </div>
-""", unsafe_allow_html=True)
-st.caption("<center>🔒 Site 100% Seguro: Seus arquivos são processados na memória e não ficam salvos.</center>", unsafe_allow_html=True)
+# Rodapé Discreto
+st.markdown("<br><hr>", unsafe_allow_html=True)
+st.markdown("<center>📦 <b>Suprimentos:</b> <a href='#'>Impressora Térmica</a> | <a href='#'>Etiquetas 10x15</a></center>", unsafe_allow_html=True)
