@@ -16,30 +16,42 @@ arquivos_zpl = st.file_uploader("Arraste seus arquivos aqui", accept_multiple_fi
 
 if arquivos_zpl:
     if st.button("Converter e Juntar em 1 PDF"):
-        arquivos_para_processar = []
+        # 1. Extrair e separar CADA etiqueta individualmente com a nossa "tesoura virtual"
+        todas_as_etiquetas = []
         
-        # 1. Abre os ZIPs ou lê os arquivos soltos
         for file in arquivos_zpl:
             if file.name.lower().endswith('.zip'):
                 with zipfile.ZipFile(file, 'r') as z:
                     for nome_arquivo in z.namelist():
                         if nome_arquivo.lower().endswith(('.zpl', '.txt')):
                             conteudo = z.read(nome_arquivo).decode('utf-8', errors='ignore')
-                            arquivos_para_processar.append({'nome': nome_arquivo, 'conteudo': conteudo})
+                            # Padroniza as letras e corta o texto usando o comando que finaliza a etiqueta (^XZ)
+                            conteudo_padronizado = conteudo.replace('^xz', '^XZ').replace('^xa', '^XA')
+                            pedacos = conteudo_padronizado.split('^XZ')
+                            for pedaco in pedacos:
+                                if '^XA' in pedaco:
+                                    todas_as_etiquetas.append(pedaco + '^XZ')
             else:
                 conteudo = file.read().decode('utf-8', errors='ignore')
-                arquivos_para_processar.append({'nome': file.name, 'conteudo': conteudo})
+                conteudo_padronizado = conteudo.replace('^xz', '^XZ').replace('^xa', '^XA')
+                pedacos = conteudo_padronizado.split('^XZ')
+                for pedaco in pedacos:
+                    if '^XA' in pedaco:
+                        todas_as_etiquetas.append(pedaco + '^XZ')
 
-        total_arquivos = len(arquivos_para_processar)
+        total_etiquetas = len(todas_as_etiquetas)
         
-        if total_arquivos == 0:
-            st.error("Nenhuma etiqueta ZPL ou TXT encontrada.")
+        if total_etiquetas == 0:
+            st.error("Nenhuma etiqueta ZPL ou TXT válida encontrada.")
         else:
             progress_bar = st.progress(0)
-            merger = PyPDF2.PdfMerger() # Inicia o "grampeador" de PDFs
+            st.write(f"⏳ O site encontrou **{total_etiquetas} etiquetas**! Processando...")
+            
+            merger = PyPDF2.PdfMerger()
             teve_sucesso = False
             
-            for idx, item in enumerate(arquivos_para_processar):
+            # 2. Envia uma por uma, garantindo que nunca trave por limite de tamanho
+            for idx, zpl_code in enumerate(todas_as_etiquetas):
                 url = 'http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/'
                 headers = {'Accept': 'application/pdf'}
                 
@@ -48,10 +60,9 @@ if arquivos_zpl:
                 
                 while tentativas < 10:
                     try:
-                        resp = requests.post(url, headers=headers, data=item['conteudo'])
+                        resp = requests.post(url, headers=headers, data=zpl_code)
                         
                         if resp.status_code == 200:
-                            # Adiciona a página da etiqueta atual no PDF principal
                             merger.append(io.BytesIO(resp.content))
                             sucesso_neste = True
                             teve_sucesso = True
@@ -65,16 +76,12 @@ if arquivos_zpl:
                     
                     tentativas += 1
                     
-                if not sucesso_neste:
-                    st.warning(f"Erro ao converter a etiqueta: {item['nome']}")
-                    
-                progress_bar.progress((idx + 1) / total_arquivos)
+                progress_bar.progress((idx + 1) / total_etiquetas)
                 
-            # Se pelo menos 1 etiqueta deu certo, libera o botão de download
+            # 3. Gera o arquivo final unificado
             if teve_sucesso:
-                st.success(f"✅ {total_arquivos} etiqueta(s) processada(s) e unidas com sucesso!")
+                st.success(f"✅ O PDF com as {total_etiquetas} etiquetas está pronto!")
                 
-                # Prepara o arquivo final unificado para baixar
                 pdf_final_bytes = io.BytesIO()
                 merger.write(pdf_final_bytes)
                 merger.close()
@@ -85,7 +92,7 @@ if arquivos_zpl:
                     data=pdf_final_bytes,
                     file_name="etiquetas_unidas.pdf",
                     mime="application/pdf",
-                    type="primary" # Deixa o botão vermelho/destacado
+                    type="primary"
                 )
 
 st.divider()
