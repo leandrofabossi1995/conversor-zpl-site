@@ -11,49 +11,61 @@ st.write("Converta suas etiquetas da Shopee, Mercado Livre e outros com seguran�
 
 arquivos_zpl = st.file_uploader("Arraste seus arquivos .zpl aqui", accept_multiple_files=True)
 
+# 1. Botão de Converter
 if arquivos_zpl:
     if st.button("Converter Agora"):
+        # Cria uma "memória" temporária para guardar os PDFs prontos
+        st.session_state['pdfs_prontos'] = []
         progress_bar = st.progress(0)
-        total_arquivos = len(arquivos_zpl)
         
         for idx, file in enumerate(arquivos_zpl):
-            zpl_content = file.read()
+            # O .decode('utf-8') garante que o arquivo não vá como "letras estranhas"
+            zpl_content = file.read().decode('utf-8', errors='ignore')
             
             url = 'http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/'
             headers = {'Accept': 'application/pdf'}
             
-            sucesso = False
             tentativas = 0
+            sucesso = False
             
             while tentativas < 10:
                 try:
                     resp = requests.post(url, headers=headers, data=zpl_content)
                     
                     if resp.status_code == 200:
-                        st.download_button(
-                            label=f"⬇️ Baixar PDF - {file.name}",
-                            data=resp.content,
-                            file_name=f"{file.name}.pdf",
-                            mime="application/pdf"
-                        )
+                        # Salva o PDF pronto na memória em vez de mostrar o botão logo de cara
+                        st.session_state['pdfs_prontos'].append({
+                            'nome': f"{file.name}.pdf",
+                            'dados': resp.content
+                        })
                         sucesso = True
                         break
-                    
                     elif resp.status_code == 429:
                         time.sleep(3 + tentativas * 2) 
-                    
                     else:
                         time.sleep(1)
-                        
                 except:
                     time.sleep(2)
                 
                 tentativas += 1
-            
+                
             if not sucesso:
-                st.error(f"Erro ao converter {file.name} após 10 tentativas.")
+                st.error(f"Erro ao converter {file.name}")
+                
+            progress_bar.progress((idx + 1) / len(arquivos_zpl))
             
-            progress_bar.progress((idx + 1) / total_arquivos)
+        st.success("✅ Conversão finalizada com sucesso!")
+
+# 2. Mostra os botões de Download FORA do botão de converter (Segurança do Streamlit)
+if 'pdfs_prontos' in st.session_state:
+    st.write("### Seus arquivos estão prontos:")
+    for pdf in st.session_state['pdfs_prontos']:
+        st.download_button(
+            label=f"⬇️ Baixar {pdf['nome']}",
+            data=pdf['dados'],
+            file_name=pdf['nome'],
+            mime="application/pdf"
+        )
 
 st.divider()
 st.subheader("📦 Suprimentos para seu E-commerce")
