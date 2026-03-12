@@ -30,7 +30,7 @@ if arquivos_zpl:
             sucesso = False
             tentativas = 0
             
-            while tentativas < 10: [cite: 2]
+while tentativas < 10:
                 try:
                     resp = requests.post(url, headers=headers, data=zpl_content)
                     
@@ -79,3 +79,4 @@ with col2:
     st.write("- [Leitor de Código de Barras](LINK_AFILIADO)")
 
 st.caption("Site 100% Seguro: Seus arquivos são processados e não ficam salvos em nosso servidor.")
+
