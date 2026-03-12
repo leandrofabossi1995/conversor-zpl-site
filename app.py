@@ -5,8 +5,8 @@ import zipfile
 import io
 import PyPDF2
 
-# 1. Configuração inicial da página
-st.set_page_config(page_title="ZPL CONVERSOR MAX", page_icon="🖨️", layout="centered")
+# 1. Configuração inicial da página (Dark Mode)
+st.set_page_config(page_title="ZPL CONVERSOR MAX - DARK EDITION", page_icon="🖨️", layout="centered")
 
 # 2. Inicialização da memória do sistema (Session State)
 if 'processado' not in st.session_state:
@@ -23,58 +23,138 @@ def resetar_sistema():
     st.session_state.reset_key += 1
     st.rerun()
 
-# 3. Visual e Estilo (CSS)
+# 3. Visual e Estilo (CSS - Dark Mode Elegante)
 st.markdown(f"""
     <style>
-    /* Esconde menus e rodapés */
+    /* Esconde menus e rodapés nativos */
     #MainMenu, footer, header {{visibility: hidden;}}
     
-    /* Título Discreto */
+    /* Fundo Dark e Fonte Profissional */
+    body, .stApp {{
+        background-color: #1e1e1e;
+        color: #e0e0e0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }}
+
+    /* Título Discreto e Elegante */
     .titulo-max {{
         text-align: center;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        font-size: 24px;
+        font-size: 28px;
         font-weight: 300;
-        color: #333;
-        letter-spacing: 2px;
-        margin-bottom: 20px;
+        color: #00bcd4; /* Azul Neon */
+        letter-spacing: 3px;
+        margin-bottom: 30px;
+        text-transform: uppercase;
     }}
 
-    /* Estilo da área de Upload (Compacta) */
+    /* Estilo da área de Upload (Card Flutuante Compacto) */
     section[data-testid="stFileUploadDropzone"] {{
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px solid #ddd;
+        background-color: #2d2d2d;
+        padding: 15px;
+        border-radius: 12px;
+        border: 1px solid #444;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        transition: 0.3s;
+    }}
+    section[data-testid="stFileUploadDropzone"]:hover {{
+        border-color: #00bcd4;
+        box-shadow: 0 6px 10px rgba(0, 188, 212, 0.2);
     }}
     
-    /* Tradução visual do botão Browse files */
+    /* Tradução visual e customização do botão Browse files */
     section[data-testid="stFileUploadDropzone"] button {{
         font-size: 0px !important;
+        background-color: transparent !important;
+        border: 2px solid #00bcd4 !important;
+        color: #00bcd4 !important;
+        border-radius: 30px !important;
+        padding: 10px 20px !important;
+        width: auto !important;
+        margin: 10px auto !important;
+        display: block !important;
     }}
     section[data-testid="stFileUploadDropzone"] button::after {{
-        content: "Selecionar Arquivos";
+        content: "☁️ SELECIONAR ARQUIVOS";
         font-size: 16px;
+        font-weight: bold;
+    }}
+    section[data-testid="stFileUploadDropzone"] button:hover {{
+        background-color: #00bcd4 !important;
+        color: #1e1e1e !important;
     }}
 
-    /* Botão Converter (Azul) */
+    /* Estilo do Texto de Instrução (Compacto) */
+    section[data-testid="stFileUploadDropzone"] p {{
+        font-size: 14px;
+        color: #aaa;
+        text-align: center;
+        margin: 5px 0;
+    }}
+
+    /* Botão Converter (Azul Neon Brilhante) */
     div.stButton > button:first-child {{
-        background-color: #0066cc;
-        color: white;
+        background-color: transparent;
+        color: #00bcd4;
         width: 100%;
-        border-radius: 5px;
-        height: 45px;
-        border: none;
+        border-radius: 8px;
+        height: 50px;
+        font-size: 18px;
+        font-weight: bold;
+        border: 2px solid #00bcd4;
+        transition: 0.3s;
+        margin-top: 20px;
+    }}
+    div.stButton > button:first-child:hover {{
+        background-color: #00bcd4;
+        color: #1e1e1e;
+        box-shadow: 0 0 15px rgba(0, 188, 212, 0.5);
     }}
 
-    /* Botão Download (Verde) */
+    /* Botão Download (Verde Sucesso Brilhante) */
     div.stDownloadButton > button {{
+        background-color: transparent !important;
+        color: #28a745 !important;
+        width: 100%;
+        border-radius: 8px;
+        height: 55px;
+        font-size: 20px;
+        font-weight: bold;
+        border: 2px solid #28a745 !important;
+        transition: 0.3s;
+    }}
+    div.stDownloadButton > button:hover {{
         background-color: #28a745 !important;
         color: white !important;
-        width: 100%;
-        border-radius: 5px;
-        height: 50px;
-        font-weight: bold;
-        border: none;
+        box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
+    }}
+
+    /* Spinner e Mensagens de Erro/Sucesso */
+    .stSpinner {{
+        color: #00bcd4;
+    }}
+    .stAlert {{
+        background-color: #2d2d2d;
+        color: #e0e0e0;
+        border-radius: 8px;
+        border: 1px solid #444;
+    }}
+
+    /* Rodapé Discreto */
+    .rodape-links {{
+        text-align: center;
+        font-size: 14px;
+        color: #888;
+        margin-top: 50px;
+        padding-top: 20px;
+        border-top: 1px solid #444;
+    }}
+    .rodape-links a {{
+        color: #00bcd4;
+        text-decoration: none;
+        margin: 0 10px;
+    }}
+    .rodape-links a:hover {{
+        text-decoration: underline;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -87,7 +167,7 @@ if not st.session_state.processado:
     arquivos = st.file_uploader("", accept_multiple_files=True, type=['zpl', 'txt', 'zip'], key=f"uploader_{st.session_state.reset_key}")
 
     if arquivos:
-        if st.button("🚀 Converter para PDF Único"):
+        if st.button("🚀 CONVERTER PARA PDF ÚNICO"):
             todas_as_etiquetas = []
             
             # Lógica de extração (ZPL/TXT/ZIP)
@@ -126,7 +206,7 @@ if not st.session_state.processado:
 
 # 5. Tela de Download e Limpeza
 else:
-    st.success("✅ Conversão concluída com sucesso!")
+    st.success("✅ Conversor concluído com sucesso!")
     st.download_button(
         label="⬇️ BAIXAR E FINALIZAR",
         data=st.session_state.pdf_final,
@@ -138,5 +218,11 @@ else:
         resetar_sistema()
 
 # 6. Rodapé de Afiliados (Discreto)
-st.markdown("---")
-st.caption("📦 **Suprimentos Sugeridos:** [Impressora Térmica](LINK) | [Etiquetas 10x15](LINK)")
+st.markdown(f"""
+    <div class="rodape-links">
+        📦 <b>Suprimentos Sugeridos:</b>
+        <a href="LINK_DA_AMAZON_IMPRESSORA" target="_blank">Impressora Térmica</a> |
+        <a href="LINK_DA_AMAZON_ETIQUETAS" target="_blank">Etiquetas 10x15</a>
+    </div>
+""", unsafe_allow_html=True)
+st.caption("<center>🔒 Site 100% Seguro: Seus arquivos são processados na memória e não ficam salvos.</center>", unsafe_allow_html=True)
