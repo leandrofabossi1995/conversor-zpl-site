@@ -161,5 +161,6 @@ with col2:
     st.write("- [Impressora Elgin L42 Pro](LINK_AFILIADO)")
     st.write("- [Leitor de Código de Barras](LINK_AFILIADO)")
 
-st.caption("
+st.caption(")
+
 
