@@ -5,160 +5,138 @@ import zipfile
 import io
 import PyPDF2
 
-# Configuração tem que ser a primeira coisa sempre
-st.set_page_config(page_title="Conversor ZPL para PDF Ultra", page_icon="🖨️", layout="centered")
+# 1. Configuração inicial da página
+st.set_page_config(page_title="ZPL CONVERSOR MAX", page_icon="🖨️", layout="centered")
 
-# --- MÁGICA DO VISUAL (CSS) ---
-st.markdown("""
+# 2. Inicialização da memória do sistema (Session State)
+if 'processado' not in st.session_state:
+    st.session_state.processado = False
+if 'pdf_final' not in st.session_state:
+    st.session_state.pdf_final = None
+if 'reset_key' not in st.session_state:
+    st.session_state.reset_key = 0
+
+# Função para limpar tudo e voltar ao início
+def resetar_sistema():
+    st.session_state.processado = False
+    st.session_state.pdf_final = None
+    st.session_state.reset_key += 1
+    st.rerun()
+
+# 3. Visual e Estilo (CSS)
+st.markdown(f"""
     <style>
-    /* Esconde o menu do topo e o rodapé do Streamlit */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* Esconde menus e rodapés */
+    #MainMenu, footer, header {{visibility: hidden;}}
     
-    /* Centraliza e embeleza os títulos */
-    .titulo {
+    /* Título Discreto */
+    .titulo-max {{
         text-align: center;
-        font-size: 42px !important;
-        font-weight: 800;
-        margin-bottom: 0px;
-        padding-bottom: 0px;
-    }
-    .subtitulo {
-        text-align: center;
-        font-size: 18px;
-        color: #666666;
-        margin-bottom: 30px;
-    }
-    
-    /* Deixa a área de upload mais bonita */
-    [data-testid="stFileUploadDropzone"] {
-        border-radius: 15px;
-        border: 2px dashed #0066cc;
-        background-color: #f4f8fc;
-        padding: 20px;
-    }
-    
-    /* Botão de Converter Gigante */
-    .stButton>button {
-        width: 100%;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 24px;
+        font-weight: 300;
+        color: #333;
+        letter-spacing: 2px;
+        margin-bottom: 20px;
+    }}
+
+    /* Estilo da área de Upload (Compacta) */
+    section[data-testid="stFileUploadDropzone"] {{
+        padding: 10px;
         border-radius: 8px;
-        height: 55px;
-        font-size: 20px !important;
-        font-weight: bold;
+        border: 1px solid #ddd;
+    }}
+    
+    /* Tradução visual do botão Browse files */
+    section[data-testid="stFileUploadDropzone"] button {{
+        font-size: 0px !important;
+    }}
+    section[data-testid="stFileUploadDropzone"] button::after {{
+        content: "Selecionar Arquivos";
+        font-size: 16px;
+    }}
+
+    /* Botão Converter (Azul) */
+    div.stButton > button:first-child {{
         background-color: #0066cc;
         color: white;
+        width: 100%;
+        border-radius: 5px;
+        height: 45px;
         border: none;
-        transition: 0.3s;
-        margin-top: 10px;
-    }
-    .stButton>button:hover {
-        background-color: #004c99;
-        transform: scale(1.02);
-    }
+    }}
+
+    /* Botão Download (Verde) */
+    div.stDownloadButton > button {{
+        background-color: #28a745 !important;
+        color: white !important;
+        width: 100%;
+        border-radius: 5px;
+        height: 50px;
+        font-weight: bold;
+        border: none;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO DO SITE ---
-st.info("💡 **Dica de Vendedor:** Economize tempo e fita! [Veja as melhores Impressoras Térmicas em oferta na Amazon](https://sua-url-de-afiliado.com)")
+# 4. Interface Principal
+st.markdown('<p class="titulo-max">ZPL CONVERSOR MAX</p>', unsafe_allow_html=True)
 
-st.markdown('<p class="titulo">🖨️ Conversor ZPL para PDF</p>', unsafe_allow_html=True)
-st.markdown('<p class="subtitulo">Suba arquivos <b>.ZPL, .TXT</b> ou <b>.ZIP</b> e baixe tudo em <b>1 ÚNICO PDF</b>!</p>', unsafe_allow_html=True)
+# Só mostra o seletor se ainda não processamos nada
+if not st.session_state.processado:
+    arquivos = st.file_uploader("", accept_multiple_files=True, type=['zpl', 'txt', 'zip'], key=f"uploader_{st.session_state.reset_key}")
 
-# --- ÁREA DE FUNCIONAMENTO ---
-arquivos_zpl = st.file_uploader("Arraste seus arquivos aqui", accept_multiple_files=True, type=['zpl', 'txt', 'zip'])
+    if arquivos:
+        if st.button("🚀 Converter para PDF Único"):
+            todas_as_etiquetas = []
+            
+            # Lógica de extração (ZPL/TXT/ZIP)
+            for f in arquivos:
+                if f.name.lower().endswith('.zip'):
+                    with zipfile.ZipFile(f, 'r') as z:
+                        for nome in z.namelist():
+                            if nome.lower().endswith(('.zpl', '.txt')):
+                                texto = z.read(nome).decode('utf-8', errors='ignore')
+                                partes = texto.replace('^xz', '^XZ').replace('^xa', '^XA').split('^XZ')
+                                todas_as_etiquetas.extend([p + '^XZ' for p in partes if '^XA' in p])
+                else:
+                    texto = f.read().decode('utf-8', errors='ignore')
+                    partes = texto.replace('^xz', '^XZ').replace('^xa', '^XA').split('^XZ')
+                    todas_as_etiquetas.extend([p + '^XZ' for p in partes if '^XA' in p])
 
-if arquivos_zpl:
-    if st.button("🚀 Converter e Juntar em 1 PDF"):
-        todas_as_etiquetas = []
-        
-        for file in arquivos_zpl:
-            if file.name.lower().endswith('.zip'):
-                with zipfile.ZipFile(file, 'r') as z:
-                    for nome_arquivo in z.namelist():
-                        if nome_arquivo.lower().endswith(('.zpl', '.txt')):
-                            conteudo = z.read(nome_arquivo).decode('utf-8', errors='ignore')
-                            conteudo_padronizado = conteudo.replace('^xz', '^XZ').replace('^xa', '^XA')
-                            pedacos = conteudo_padronizado.split('^XZ')
-                            for pedaco in pedacos:
-                                if '^XA' in pedaco:
-                                    todas_as_etiquetas.append(pedaco + '^XZ')
+            if todas_as_etiquetas:
+                with st.spinner("Processando etiquetas..."):
+                    merger = PyPDF2.PdfMerger()
+                    for zpl in todas_as_etiquetas:
+                        res = requests.post('http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/', 
+                                          headers={'Accept': 'application/pdf'}, data=zpl)
+                        if res.status_code == 200:
+                            merger.append(io.BytesIO(res.content))
+                    
+                    pdf_out = io.BytesIO()
+                    merger.write(pdf_out)
+                    merger.close()
+                    pdf_out.seek(0)
+                    
+                    st.session_state.pdf_final = pdf_out.getvalue()
+                    st.session_state.processado = True
+                    st.rerun()
             else:
-                conteudo = file.read().decode('utf-8', errors='ignore')
-                conteudo_padronizado = conteudo.replace('^xz', '^XZ').replace('^xa', '^XA')
-                pedacos = conteudo_padronizado.split('^XZ')
-                for pedaco in pedacos:
-                    if '^XA' in pedaco:
-                        todas_as_etiquetas.append(pedaco + '^XZ')
+                st.error("Nenhuma etiqueta válida encontrada.")
 
-        total_etiquetas = len(todas_as_etiquetas)
-        
-        if total_etiquetas == 0:
-            st.error("Nenhuma etiqueta ZPL ou TXT válida encontrada.")
-        else:
-            st.write(f"⏳ O site encontrou **{total_etiquetas} etiquetas**! Processando...")
-            progress_bar = st.progress(0)
-            
-            merger = PyPDF2.PdfMerger()
-            teve_sucesso = False
-            
-            for idx, zpl_code in enumerate(todas_as_etiquetas):
-                url = 'http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/'
-                headers = {'Accept': 'application/pdf'}
-                
-                tentativas = 0
-                sucesso_neste = False
-                
-                while tentativas < 10:
-                    try:
-                        resp = requests.post(url, headers=headers, data=zpl_code)
-                        
-                        if resp.status_code == 200:
-                            merger.append(io.BytesIO(resp.content))
-                            sucesso_neste = True
-                            teve_sucesso = True
-                            break
-                        elif resp.status_code == 429:
-                            time.sleep(3 + tentativas * 2) 
-                        else:
-                            time.sleep(1)
-                    except:
-                        time.sleep(2)
-                    
-                    tentativas += 1
-                    
-                progress_bar.progress((idx + 1) / total_etiquetas)
-                
-            if teve_sucesso:
-                st.success(f"✅ O PDF com as {total_etiquetas} etiquetas está pronto!")
-                
-                pdf_final_bytes = io.BytesIO()
-                merger.write(pdf_final_bytes)
-                merger.close()
-                pdf_final_bytes.seek(0)
-                
-                st.download_button(
-                    label="⬇️ Baixar Todas as Etiquetas em 1 PDF",
-                    data=pdf_final_bytes,
-                    file_name="etiquetas_unidas.pdf",
-                    mime="application/pdf",
-                    type="primary"
-                )
+# 5. Tela de Download e Limpeza
+else:
+    st.success("✅ Conversão concluída com sucesso!")
+    st.download_button(
+        label="⬇️ BAIXAR E FINALIZAR",
+        data=st.session_state.pdf_final,
+        file_name="etiquetas_concluidas.pdf",
+        mime="application/pdf",
+        on_click=resetar_sistema
+    )
+    if st.button("Cancelar e Voltar"):
+        resetar_sistema()
 
-# --- ÁREA DE PRODUTOS/AFILIADOS ---
-st.markdown("<br><br>", unsafe_allow_html=True)
-st.divider()
-st.subheader("📦 Suprimentos para seu E-commerce")
-col1, col2 = st.columns(2)
-
-with col1:
-    st.write("**Papelaria e Etiquetas**")
-    st.write("- [Etiqueta Térmica 10x15](LINK_AFILIADO)")
-    st.write("- [Fita Adesiva Reforçada](LINK_AFILIADO)")
-
-with col2:
-    st.write("**Hardware**")
-    st.write("- [Impressora Elgin L42 Pro](LINK_AFILIADO)")
-    st.write("- [Leitor de Código de Barras](LINK_AFILIADO)")
-
-st.caption("🔒 Site 100% Seguro: Seus arquivos são processados na memória e não ficam salvos em nenhum servidor.")
+# 6. Rodapé de Afiliados (Discreto)
+st.markdown("---")
+st.caption("📦 **Suprimentos Sugeridos:** [Impressora Térmica](LINK) | [Etiquetas 10x15](LINK)")
